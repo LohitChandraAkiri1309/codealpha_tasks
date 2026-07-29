@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neural Characters - Handwritten OCR Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom Styleheet -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <div class="logo-icon"><i class="fa-solid fa-brain"></i></div>
+                <div class="logo-text">
+                    <h1>NEURAL CHARACTERS</h1>
+                    <p>Deep Learning Handwritten Recognition Dashboard</p>
+                </div>
+            </div>
+            <div class="model-status-container">
+                <div class="status-badge" id="mnist-status">
+                    <span class="status-indicator loading"></span>
+                    <span>MNIST: Loading</span>
+                </div>
+                <div class="status-badge" id="emnist-status">
+                    <span class="status-indicator loading"></span>
+                    <span>EMNIST: Loading</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="dashboard-grid">
+            <!-- Left Card: Input Panel -->
+            <section class="dashboard-card input-panel">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-pen-nib"></i> Input Workspace</h2>
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="draw-tab"><i class="fa-solid fa-paintbrush"></i> Draw</button>
+                        <button class="tab-btn" data-tab="upload-tab"><i class="fa-solid fa-cloud-arrow-up"></i> Upload</button>
+                    </div>
+                </div>
+
+                <div class="card-content">
+                    <!-- Tab 1: Canvas Drawing -->
+                    <div class="tab-content active" id="draw-tab">
+                        <div class="canvas-wrapper">
+                            <canvas id="paint-canvas" width="400" height="400"></canvas>
+                        </div>
+                        <div class="canvas-controls">
+                            <button id="clear-btn" class="control-btn" title="Clear Canvas">
+                                <i class="fa-solid fa-trash-can"></i> Clear
+                            </button>
+                            <button id="undo-btn" class="control-btn" title="Undo Last Stroke">
+                                <i class="fa-solid fa-rotate-left"></i> Undo
+                            </button>
+                            <div class="brush-slider-container">
+                                <span class="brush-icon"><i class="fa-solid fa-circle" style="font-size: 10px;"></i></span>
+                                <input type="range" id="brush-size" min="8" max="28" value="18">
+                                <span id="brush-size-val">18px</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: File Upload -->
+                    <div class="tab-content" id="upload-tab">
+                        <div class="upload-dropzone" id="dropzone">
+                            <i class="fa-solid fa-images upload-icon"></i>
+                            <p class="upload-text">Drag & drop your handwritten image here</p>
+                            <p class="upload-subtext">Supports PNG, JPG, JPEG</p>
+                            <button class="browse-btn">Browse Files</button>
+                            <input type="file" id="file-input" accept="image/*" style="display: none;">
+                        </div>
+                        <div class="preview-wrapper" style="display: none;">
+                            <img id="upload-preview" alt="Upload Preview">
+                            <button id="change-upload-btn" class="control-btn"><i class="fa-solid fa-xmark"></i> Remove</button>
+                        </div>
+                    </div>
+
+                    <!-- Common Mode & Model Selection -->
+                    <div class="workspace-settings">
+                        <div class="setting-group">
+                            <label class="setting-label">Dataset Model</label>
+                            <div class="radio-buttons">
+                                <label class="radio-label">
+                                    <input type="radio" name="model-select" value="mnist" checked>
+                                    <span class="radio-custom"></span>
+                                    <span>Digits (MNIST)</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="model-select" value="emnist">
+                                    <span class="radio-custom"></span>
+                                    <span>Letters (EMNIST)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="setting-group">
+                            <label class="setting-label">Inference Mode</label>
+                            <div class="toggle-buttons">
+                                <button class="mode-btn active" id="mode-single">Single Character</button>
+                                <button class="mode-btn" id="mode-sequence">Word / Sentence</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Card: Output/Prediction Panel -->
+            <section class="dashboard-card output-panel">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-chart-simple"></i> Recognition Diagnostics</h2>
+                </div>
+
+                <div class="card-content output-flex">
+                    <!-- Loading overlay for results -->
+                    <div class="result-loader" id="result-loader" style="display: none;">
+                        <div class="spinner"></div>
+                        <p>Running Neural Network Inference...</p>
+                    </div>
+
+                    <!-- Single Character Result Details -->
+                    <div id="single-result-view" class="result-view-container">
+                        <div class="result-top-split">
+                            <div class="prediction-large-card">
+                                <span class="card-label">PREDICTED CLASS</span>
+                                <div class="predicted-char" id="predicted-value">-</div>
+                                <div class="prediction-confidence" id="predicted-confidence">Confidence: 0.0%</div>
+                                <button id="speak-btn" class="action-icon-btn" title="Read letter out loud" style="display: none;">
+                                    <i class="fa-solid fa-volume-high"></i>
+                                </button>
+                            </div>
+
+                            <div class="preprocessing-card">
+                                <span class="card-label">MODEL INPUT (28x28)</span>
+                                <div class="preprocessed-box">
+                                    <canvas id="preview-canvas" width="112" height="112"></canvas>
+                                    <span class="dim-label">28 x 28 px</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="distribution-card">
+                            <span class="card-label">CONFIDENCE DISTRIBUTION</span>
+                            <div class="bar-chart-container" id="distribution-bars">
+                                <!-- Dynamic bars here -->
+                                <div class="chart-empty-state">Draw or upload a character to view neural net activations.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sequence / Word Result Details -->
+                    <div id="sequence-result-view" class="result-view-container" style="display: none;">
+                        <div class="sequence-main-card">
+                            <span class="card-label">RECONSTRUCTED SEQUENCE</span>
+                            <div class="sequence-text-output" id="sequence-value">---</div>
+                            <button id="speak-sequence-btn" class="action-icon-btn" title="Read word out loud" style="display: none;">
+                                <i class="fa-solid fa-volume-high"></i>
+                            </button>
+                        </div>
+
+                        <div class="segmentation-visualization-card">
+                            <span class="card-label">SEGMENTATION BOUNDING BOXES</span>
+                            <div class="annotated-image-wrapper">
+                                <div class="image-box-container">
+                                    <img id="annotated-sequence-preview" alt="Segmented word display" style="display: none;">
+                                    <div class="chart-empty-state" id="sequence-image-placeholder">Draw or upload a sequence above.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="segmented-characters-card">
+                            <span class="card-label">CHARACTER DECODING PIPELINE</span>
+                            <div class="segmented-list" id="segmented-list-container">
+                                <div class="chart-empty-state">Individual letter crops and probabilities will be rendered here.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Bottom Card: Network Architecture Visualizer -->
+            <section class="dashboard-card architecture-panel grid-span-full">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-network-wired"></i> Neural Net (CNN) Architecture Visualizer</h2>
+                </div>
+                <div class="card-content">
+                    <div class="network-viz-container">
+                        <!-- Input Layer -->
+                        <div class="network-layer" data-layer="input">
+                            <div class="layer-node"><i class="fa-solid fa-image"></i></div>
+                            <div class="layer-info">
+                                <h3>Input Layer</h3>
+                                <p class="layer-dims">1 x 28 x 28</p>
+                            </div>
+                            <div class="layer-tooltip">
+                                <h4>Input Image</h4>
+                                <p>Grayscale drawing normalized to standard size. 28 pixels width by 28 pixels height.</p>
+                            </div>
+                        </div>
+
+                        <div class="network-connector"><i class="fa-solid fa-chevron-right"></i></div>
+
+                        <!-- Conv 1 -->
+                        <div class="network-layer" data-layer="conv1">
+                            <div class="layer-node"><i class="fa-solid fa-filter"></i></div>
+                            <div class="layer-info">
+                                <h3>Conv2D (ReLU)</h3>
+                                <p class="layer-dims">32 x 28 x 28</p>
+                            </div>
+                            <div class="layer-tooltip">
+                                <h4>Conv Block 1</h4>
+                                <p>32 convolutional kernels (3x3) extract basic edges, corners, and stroke outlines. Activations filtered by ReLU function.</p>
+                            </div>
+                        </div>
+
+                        <div class="network-connector"><i class="fa-solid fa-chevron-right"></i></div>
+
+                        <!-- Pool 1 -->
+                        <div class="network-layer" data-layer="pool1">
+                            <div class="layer-node"><i class="fa-solid fa-minimize"></i></div>
+                            <div class="layer-info">
+                                <h3>MaxPool2D</h3>
+                                <p class="layer-dims">32 x 14 x 14</p>
+                            </div>
+                            <div class="layer-tooltip">
+                                <h4>Max Pooling 1</h4>
+                                <p>Downsamples width and height by 2x by taking the maximum activation value in each 2x2 local window. Adds translation invariance.</p>
+                            </div>
+                        </div>
+
+                        <div class="network-connector"><i class="fa-solid fa-chevron-right"></i></div>
+
+                        <!-- Conv 2 -->
+                        <div class="network-layer" data-layer="conv2">
+                            <div class="layer-node"><i class="fa-solid fa-circle-nodes"></i></div>
+                            <div class="layer-info">
+                                <h3>Conv2D (ReLU)</h3>
+                                <p class="layer-dims">64 x 14 x 14</p>
+                            </div>
+                            <div class="layer-tooltip">
+                                <h4>Conv Block 2</h4>
+                                <p>64 convolutional filters (3x3) learn complex combinations of features (e.g. closed loops, intersection points, arches).</p>
+                            </div>
+                        </div>
+
+                        <div class="network-connector"><i class="fa-solid fa-chevron-right"></i></div>
+
+                        <!-- Pool 2 -->
+                        <div class="network-layer" data-layer="pool2">
+                            <div class="layer-node"><i class="fa-solid fa-compress"></i></div>
+                            <div class="layer-info">
+                                <h3>MaxPool2D</h3>
+                                <p class="layer-dims">64 x 7 x 7</p>
+                            </div>
+                            <div class="layer-tooltip">
+                                <h4>Max Pooling 2</h4>
+                                <p>Reduces dimensions by 2x again. Prepares flattened representations of spatial coordinates.</p>
+                            </div>
+                        </div>
+
+                        <div class="network-connector"><i class="fa-solid fa-chevron-right"></i></div>
+
+                        <!-- FC 1 -->
+                        <div class="network-layer" data-layer="fc1">
+                            <div class="layer-node"><i class="fa-solid fa-arrows-split-up-and-left"></i></div>
+                            <div class="layer-info">
+                                <h3>Dense (128)</h3>
+                                <p class="layer-dims">128 Nodes</p>
+                            </div>
+                            <div class="layer-tooltip">
+                                <h4>Fully Connected Layer</h4>
+                                <p>Flattens 64 x 7x7 (3136 features) and projects into 128 nodes. Performs high-level logic and combining of features. Uses 50% Dropout during training to avoid overfitting.</p>
+                            </div>
+                        </div>
+
+                        <div class="network-connector"><i class="fa-solid fa-chevron-right"></i></div>
+
+                        <!-- Output -->
+                        <div class="network-layer" data-layer="output">
+                            <div class="layer-node final"><i class="fa-solid fa-tags"></i></div>
+                            <div class="layer-info">
+                                <h3>Softmax Out</h3>
+                                <p class="layer-dims" id="layer-output-dims">10 / 26 logits</p>
+                            </div>
+                            <div class="layer-tooltip">
+                                <h4>Output Softmax</h4>
+                                <p>Calculates the probability distribution over classes (Digits: 10, Letters: 26). Highest value becomes prediction.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
