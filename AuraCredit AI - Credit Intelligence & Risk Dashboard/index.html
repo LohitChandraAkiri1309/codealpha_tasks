@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraCredit AI - Credit Intelligence & Risk Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-logo">
+                <i class="fa-solid fa-shield-halved logo-icon"></i>
+                <div class="logo-text">
+                    <h1>AuraCredit <span>AI</span></h1>
+                    <p>Machine Learning Credit Risk Assessment</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div class="theme-toggle" id="theme-toggle-btn" title="Toggle Light/Dark Mode">
+                    <i class="fa-solid fa-sun icon-light"></i>
+                    <i class="fa-solid fa-moon icon-dark"></i>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-layout">
+            
+            <!-- Left Sidebar Control Center -->
+            <aside class="control-panel">
+                <div class="panel-section-header">
+                    <i class="fa-solid fa-sliders"></i>
+                    <h2>Model Configuration</h2>
+                </div>
+                
+                <form id="train-form">
+                    <!-- Logistic Regression Params -->
+                    <div class="model-param-group">
+                        <h3>Logistic Regression</h3>
+                        <div class="param-input">
+                            <label for="lr-c">Regularization Strength (C)</label>
+                            <div class="range-value-container">
+                                <input type="range" id="lr-c" name="lr_c" min="0.01" max="10" step="0.05" value="1.0">
+                                <span class="range-val" id="lr-c-val">1.0</span>
+                            </div>
+                        </div>
+                        <div class="param-input">
+                            <label for="lr-max-iter">Max Iterations</label>
+                            <select id="lr-max-iter" name="lr_max_iter">
+                                <option value="500">500</option>
+                                <option value="1000" selected>1000</option>
+                                <option value="2000">2000</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Decision Tree Params -->
+                    <div class="model-param-group">
+                        <h3>Decision Tree</h3>
+                        <div class="param-input">
+                            <label for="dt-depth">Max Depth</label>
+                            <div class="range-value-container">
+                                <input type="range" id="dt-depth" name="dt_depth" min="2" max="15" step="1" value="5">
+                                <span class="range-val" id="dt-depth-val">5</span>
+                            </div>
+                        </div>
+                        <div class="param-input">
+                            <label for="dt-split">Min Samples Split</label>
+                            <div class="range-value-container">
+                                <input type="range" id="dt-split" name="dt_split" min="2" max="50" step="2" value="10">
+                                <span class="range-val" id="dt-split-val">10</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Random Forest Params -->
+                    <div class="model-param-group">
+                        <h3>Random Forest</h3>
+                        <div class="param-input">
+                            <label for="rf-estimators">Number of Estimators</label>
+                            <div class="range-value-container">
+                                <input type="range" id="rf-estimators" name="rf_estimators" min="10" max="300" step="10" value="100">
+                                <span class="range-val" id="rf-estimators-val">100</span>
+                            </div>
+                        </div>
+                        <div class="param-input">
+                            <label for="rf-depth">Max Depth</label>
+                            <div class="range-value-container">
+                                <input type="range" id="rf-depth" name="rf_depth" min="2" max="15" step="1" value="6">
+                                <span class="range-val" id="rf-depth-val">6</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" id="btn-train">
+                        <i class="fa-solid fa-arrows-rotate spinner-icon hidden" id="train-spinner"></i>
+                        <span id="train-btn-text">Train Classification Models</span>
+                    </button>
+                </form>
+            </aside>
+
+            <!-- Main Dashboard Area -->
+            <main class="dashboard-content">
+                
+                <!-- Navigation Tabs -->
+                <nav class="dashboard-tabs">
+                    <button class="tab-btn active" data-tab="overview-tab">
+                        <i class="fa-solid fa-chart-line"></i> Performance Dashboard
+                    </button>
+                    <button class="tab-btn" data-tab="dataset-tab">
+                        <i class="fa-solid fa-database"></i> Dataset & Features
+                    </button>
+                    <button class="tab-btn" data-tab="predictor-tab">
+                        <i class="fa-solid fa-user-check"></i> Credit Predictor
+                    </button>
+                </nav>
+
+                <!-- TAB 1: Overview Tab -->
+                <div class="tab-pane active" id="overview-tab">
+                    
+                    <!-- Overview Summary Cards -->
+                    <div class="stats-grid">
+                        <div class="stats-card score-card" id="best-model-card">
+                            <div class="card-icon"><i class="fa-solid fa-crown"></i></div>
+                            <div class="card-info">
+                                <h3>Champion Model</h3>
+                                <p class="metric-value" id="champion-model-name">Random Forest</p>
+                                <p class="metric-desc">Based on highest ROC-AUC score</p>
+                            </div>
+                        </div>
+                        <div class="stats-card">
+                            <div class="card-icon font-gradient-rf"><i class="fa-solid fa-network-wired"></i></div>
+                            <div class="card-info">
+                                <h3>Random Forest AUC</h3>
+                                <p class="metric-value" id="rf-auc-display">0.0000</p>
+                                <p class="metric-desc">Ensemble Classifier</p>
+                            </div>
+                        </div>
+                        <div class="stats-card">
+                            <div class="card-icon font-gradient-dt"><i class="fa-solid fa-diagram-project"></i></div>
+                            <div class="card-info">
+                                <h3>Decision Tree AUC</h3>
+                                <p class="metric-value" id="dt-auc-display">0.0000</p>
+                                <p class="metric-desc">Single Rule-based Tree</p>
+                            </div>
+                        </div>
+                        <div class="stats-card">
+                            <div class="card-icon font-gradient-lr"><i class="fa-solid fa-chart-simple"></i></div>
+                            <div class="card-info">
+                                <h3>Logistic Regression AUC</h3>
+                                <p class="metric-value" id="lr-auc-display">0.0000</p>
+                                <p class="metric-desc">Linear Probabilistic Baseline</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Visual Charts Layout -->
+                    <div class="charts-layout">
+                        <!-- Chart 1: ROC Curve -->
+                        <div class="chart-card large-card">
+                            <div class="chart-card-header">
+                                <h3>Receiver Operating Characteristic (ROC) Curve</h3>
+                                <i class="fa-solid fa-circle-question" title="ROC curves show the trade-off between True Positive Rate and False Positive Rate. Higher curves closer to top-left indicate stronger predictive power."></i>
+                            </div>
+                            <div class="chart-wrapper">
+                                <canvas id="rocChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Chart 2: Metrics Comparison -->
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <h3>Performance Metrics Breakdown</h3>
+                                <i class="fa-solid fa-circle-question" title="Precision: Out of all positive predictions, how many were correct? Recall: Out of all actual positives, how many did we catch? F1: Harmonic mean of precision and recall. Accuracy: Total correct rate."></i>
+                            </div>
+                            <div class="chart-wrapper">
+                                <canvas id="metricsChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Chart 3: Feature Importances -->
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <h3>Feature Impact Analysis</h3>
+                                <select id="importance-model-select" class="chart-header-select">
+                                    <option value="random_forest">Random Forest (Importance)</option>
+                                    <option value="decision_tree">Decision Tree (Importance)</option>
+                                    <option value="logistic_regression">Logistic Regression (Coefficients)</option>
+                                </select>
+                            </div>
+                            <div class="chart-wrapper">
+                                <canvas id="importanceChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Panel 4: Confusion Matrices -->
+                        <div class="chart-card large-card">
+                            <div class="chart-card-header">
+                                <h3>Confusion Matrices Comparison</h3>
+                                <i class="fa-solid fa-circle-question" title="TN: True Negatives (High Risk correctly classified), FP: False Positives (High Risk misclassified as Creditworthy), FN: False Negatives (Creditworthy misclassified as High Risk), TP: True Positives (Creditworthy correctly classified)."></i>
+                            </div>
+                            <div class="cm-comparison-container">
+                                
+                                <!-- RF CM -->
+                                <div class="cm-box">
+                                    <h4>Random Forest</h4>
+                                    <div class="cm-grid">
+                                        <div class="cm-cell label-cell"></div>
+                                        <div class="cm-cell label-cell header-cell">Pred Risk (0)</div>
+                                        <div class="cm-cell label-cell header-cell">Pred Credit (1)</div>
+                                        
+                                        <div class="cm-cell label-cell header-cell row-header">Actual Risk (0)</div>
+                                        <div class="cm-cell value-cell tn-cell" id="rf-cm-tn">0</div>
+                                        <div class="cm-cell value-cell fp-cell" id="rf-cm-fp">0</div>
+                                        
+                                        <div class="cm-cell label-cell header-cell row-header">Actual Credit (1)</div>
+                                        <div class="cm-cell value-cell fn-cell" id="rf-cm-fn">0</div>
+                                        <div class="cm-cell value-cell tp-cell" id="rf-cm-tp">0</div>
+                                    </div>
+                                </div>
+
+                                <!-- DT CM -->
+                                <div class="cm-box">
+                                    <h4>Decision Tree</h4>
+                                    <div class="cm-grid">
+                                        <div class="cm-cell label-cell"></div>
+                                        <div class="cm-cell label-cell header-cell">Pred Risk (0)</div>
+                                        <div class="cm-cell label-cell header-cell">Pred Credit (1)</div>
+                                        
+                                        <div class="cm-cell label-cell header-cell row-header">Actual Risk (0)</div>
+                                        <div class="cm-cell value-cell tn-cell" id="dt-cm-tn">0</div>
+                                        <div class="cm-cell value-cell fp-cell" id="dt-cm-fp">0</div>
+                                        
+                                        <div class="cm-cell label-cell header-cell row-header">Actual Credit (1)</div>
+                                        <div class="cm-cell value-cell fn-cell" id="dt-cm-fn">0</div>
+                                        <div class="cm-cell value-cell tp-cell" id="dt-cm-tp">0</div>
+                                    </div>
+                                </div>
+
+                                <!-- LR CM -->
+                                <div class="cm-box">
+                                    <h4>Logistic Regression</h4>
+                                    <div class="cm-grid">
+                                        <div class="cm-cell label-cell"></div>
+                                        <div class="cm-cell label-cell header-cell">Pred Risk (0)</div>
+                                        <div class="cm-cell label-cell header-cell">Pred Credit (1)</div>
+                                        
+                                        <div class="cm-cell label-cell header-cell row-header">Actual Risk (0)</div>
+                                        <div class="cm-cell value-cell tn-cell" id="lr-cm-tn">0</div>
+                                        <div class="cm-cell value-cell fp-cell" id="lr-cm-fp">0</div>
+                                        
+                                        <div class="cm-cell label-cell header-cell row-header">Actual Credit (1)</div>
+                                        <div class="cm-cell value-cell fn-cell" id="lr-cm-fn">0</div>
+                                        <div class="cm-cell value-cell tp-cell" id="lr-cm-tp">0</div>
+                                    </div>
+                                </div>
+                                
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: Dataset Viewer Tab -->
+                <div class="tab-pane" id="dataset-tab">
+                    <div class="dataset-summary-bar">
+                        <div class="ds-metric">
+                            <span class="ds-label">Dataset Size:</span>
+                            <span class="ds-val" id="ds-size">1000 Applicants</span>
+                        </div>
+                        <div class="ds-metric">
+                            <span class="ds-label">Average Annual Income:</span>
+                            <span class="ds-val" id="ds-avg-income">$0</span>
+                        </div>
+                        <div class="ds-metric">
+                            <span class="ds-label">Avg Credit Utilization:</span>
+                            <span class="ds-val" id="ds-avg-util">0%</span>
+                        </div>
+                        <div class="ds-metric">
+                            <span class="ds-label">Avg Debt-to-Income (DTI):</span>
+                            <span class="ds-val" id="ds-avg-dti">0%</span>
+                        </div>
+                        <div class="ds-metric">
+                            <span class="ds-label">Creditworthy Ratio:</span>
+                            <span class="ds-val" id="ds-cw-ratio">0%</span>
+                        </div>
+                    </div>
+
+                    <div class="data-table-container">
+                        <div class="table-header-controls">
+                            <h3>Synthetic Credit History Database (Top 50 Samples)</h3>
+                            <p class="table-sub">Includes raw features and engineered ratio metrics.</p>
+                        </div>
+                        <div class="table-scroll-wrapper">
+                            <table class="data-table" id="applicants-table">
+                                <thead>
+                                    <tr>
+                                        <th>Age</th>
+                                        <th>Annual Income</th>
+                                        <th>Home Ownership</th>
+                                        <th>Credit Limit</th>
+                                        <th>Current Balance</th>
+                                        <th>Monthly Debt</th>
+                                        <th>Delinquencies</th>
+                                        <th>Util. Ratio</th>
+                                        <th>DTI Ratio</th>
+                                        <th>Creditworthy</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Populated dynamically via JS -->
+                                    <tr>
+                                        <td colspan="10" class="text-center">Loading applicant data...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 3: Predictor Tab -->
+                <div class="tab-pane" id="predictor-tab">
+                    <div class="predictor-layout">
+                        
+                        <!-- Prediction Input Form -->
+                        <div class="predictor-card form-card">
+                            <div class="card-header">
+                                <i class="fa-solid fa-file-invoice-dollar"></i>
+                                <h2>Applicant Profile Details</h2>
+                            </div>
+                            <form id="prediction-form" class="predictor-form">
+                                
+                                <div class="form-grid">
+                                    <div class="form-input-wrapper">
+                                        <label for="pred-age">Age</label>
+                                        <input type="number" id="pred-age" name="age" min="18" max="75" value="35" required>
+                                    </div>
+                                    
+                                    <div class="form-input-wrapper">
+                                        <label for="pred-income">Annual Income ($)</label>
+                                        <input type="number" id="pred-income" name="annual_income" min="5000" max="1000000" value="65000" required>
+                                    </div>
+                                    
+                                    <div class="form-input-wrapper">
+                                        <label for="pred-home">Home Ownership</label>
+                                        <select id="pred-home" name="home_ownership" required>
+                                            <option value="Rent">Rent</option>
+                                            <option value="Mortgage" selected>Mortgage</option>
+                                            <option value="Own">Own</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-input-wrapper">
+                                        <label for="pred-limit">Credit Limit ($)</label>
+                                        <input type="number" id="pred-limit" name="credit_limit" min="500" max="200000" value="15000" required>
+                                    </div>
+                                    
+                                    <div class="form-input-wrapper">
+                                        <label for="pred-balance">Current Balance ($)</label>
+                                        <input type="number" id="pred-balance" name="current_balance" min="0" max="200000" value="4500" required>
+                                    </div>
+                                    
+                                    <div class="form-input-wrapper">
+                                        <label for="pred-debt">Monthly Debt Payments ($)</label>
+                                        <input type="number" id="pred-debt" name="monthly_debt" min="0" max="20000" value="450" required>
+                                    </div>
+                                    
+                                    <div class="form-input-wrapper">
+                                        <label for="pred-emp">Employment Duration (Years)</label>
+                                        <input type="number" id="pred-emp" name="employment_years" min="0" max="45" value="5" required>
+                                    </div>
+                                    
+                                    <div class="form-input-wrapper">
+                                        <label for="pred-delinquencies">Past Delinquent Payments</label>
+                                        <input type="number" id="pred-delinquencies" name="delinquencies" min="0" max="10" value="0" required>
+                                    </div>
+                                </div>
+
+                                <div class="predictor-control-bar">
+                                    <div class="model-select-wrapper">
+                                        <label for="pred-model">Decision Engine</label>
+                                        <select id="pred-model" name="model_name">
+                                            <option value="random_forest" selected>Random Forest (Recommended)</option>
+                                            <option value="decision_tree">Decision Tree</option>
+                                            <option value="logistic_regression">Logistic Regression</option>
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="btn btn-success" id="btn-predict">
+                                        <i class="fa-solid fa-magnifying-glass-chart"></i> Assess Creditworthiness
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Prediction Outcome Panel -->
+                        <div class="predictor-card result-card empty" id="prediction-result-panel">
+                            
+                            <!-- Placeholder when no prediction has run yet -->
+                            <div class="result-placeholder">
+                                <i class="fa-solid fa-user-shield"></i>
+                                <h3>Risk Decision System Ready</h3>
+                                <p>Fill in the applicant profile details and click "Assess Creditworthiness" to generate a real-time risk classification and model score.</p>
+                            </div>
+
+                            <!-- Real results container (hidden initially) -->
+                            <div class="result-display hidden" id="result-display-content">
+                                <div class="result-header-panel">
+                                    <h3>Risk Assessment Outcome</h3>
+                                    <div class="decision-badge" id="decision-badge">Approved</div>
+                                </div>
+                                
+                                <div class="score-radial-container">
+                                    <div class="score-circular-progress" id="score-progress">
+                                        <div class="score-value" id="score-percentage">85%</div>
+                                        <div class="score-label">Credit Score</div>
+                                    </div>
+                                    <div class="score-meta">
+                                        <p>Model Confidence: <strong id="score-probability-text">85.4%</strong></p>
+                                        <p>Target Class: <strong id="score-class-text">Creditworthy (1)</strong></p>
+                                    </div>
+                                </div>
+
+                                <div class="derived-ratios-panel">
+                                    <div class="ratio-stat">
+                                        <span class="ratio-label">Credit Utilization:</span>
+                                        <span class="ratio-val" id="res-util">30.0%</span>
+                                    </div>
+                                    <div class="ratio-stat">
+                                        <span class="ratio-label">Debt-to-Income (DTI):</span>
+                                        <span class="ratio-val" id="res-dti">8.3%</span>
+                                    </div>
+                                    <div class="ratio-stat">
+                                        <span class="ratio-label">Payment-to-Income:</span>
+                                        <span class="ratio-val" id="res-pti">8.3%</span>
+                                    </div>
+                                </div>
+
+                                <div class="risk-explanation-panel">
+                                    <h4>Key Risk Factors Explanations</h4>
+                                    <ul class="risk-factors-list" id="risk-factors-list">
+                                        <!-- Populated via JS -->
+                                    </ul>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+
+        <footer class="app-footer-bar">
+            <p>&copy; 2026 AuraCredit AI. Built with Flask, Scikit-Learn, and Chart.js. Antigravity Coding Suite.</p>
+        </footer>
+    </div>
+    
+    <!-- App Logic Script -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
