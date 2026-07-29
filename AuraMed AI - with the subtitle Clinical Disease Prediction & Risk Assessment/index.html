@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraMed AI — Clinical Disease Prediction Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-logo">
+                <i class="fa-solid fa-heart-pulse logo-icon"></i>
+                <div class="logo-text">
+                    <h1>AuraMed <span>AI</span></h1>
+                    <p>Clinical Disease Prediction & Risk Assessment</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div class="dataset-selector-wrapper">
+                    <label for="dataset-select"><i class="fa-solid fa-database"></i> Target Disease:</label>
+                    <select id="dataset-select" class="dataset-dropdown">
+                        <option value="heart" selected>Heart Disease Prediction (Cleveland)</option>
+                        <option value="diabetes">Diabetes Mellitus Assessment (Pima)</option>
+                        <option value="breast_cancer">Breast Cancer Diagnosis (Wisconsin)</option>
+                    </select>
+                </div>
+                <div class="theme-toggle" id="theme-toggle-btn" title="Toggle Light/Dark Mode">
+                    <i class="fa-solid fa-sun icon-light"></i>
+                    <i class="fa-solid fa-moon icon-dark"></i>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-layout">
+            
+            <!-- Left Sidebar Control Center -->
+            <aside class="control-panel">
+                <div class="panel-section-header">
+                    <i class="fa-solid fa-sliders"></i>
+                    <h2>Model Configuration</h2>
+                </div>
+                
+                <form id="train-form">
+                    <!-- SVM Params -->
+                    <div class="model-param-group">
+                        <h3>Support Vector Machine (SVM)</h3>
+                        <div class="param-input">
+                            <label for="svm-c">Penalty Parameter (C)</label>
+                            <div class="range-value-container">
+                                <input type="range" id="svm-c" name="svm_c" min="0.1" max="10" step="0.1" value="1.0">
+                                <span class="range-val" id="svm-c-val">1.0</span>
+                            </div>
+                        </div>
+                        <div class="param-input">
+                            <label for="svm-kernel">Kernel Type</label>
+                            <select id="svm-kernel" name="svm_kernel">
+                                <option value="rbf" selected>RBF (Radial Basis Function)</option>
+                                <option value="linear">Linear</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Logistic Regression Params -->
+                    <div class="model-param-group">
+                        <h3>Logistic Regression</h3>
+                        <div class="param-input">
+                            <label for="lr-c">Regularization Strength (C)</label>
+                            <div class="range-value-container">
+                                <input type="range" id="lr-c" name="lr_c" min="0.05" max="5" step="0.05" value="1.0">
+                                <span class="range-val" id="lr-c-val">1.0</span>
+                            </div>
+                        </div>
+                        <div class="param-input">
+                            <label for="lr-max-iter">Max Iterations</label>
+                            <select id="lr-max-iter" name="lr_max_iter">
+                                <option value="500">500</option>
+                                <option value="1000" selected>1000</option>
+                                <option value="2000">2000</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Random Forest Params -->
+                    <div class="model-param-group">
+                        <h3>Random Forest</h3>
+                        <div class="param-input">
+                            <label for="rf-estimators">Number of Trees</label>
+                            <div class="range-value-container">
+                                <input type="range" id="rf-estimators" name="rf_estimators" min="10" max="300" step="10" value="100">
+                                <span class="range-val" id="rf-estimators-val">100</span>
+                            </div>
+                        </div>
+                        <div class="param-input">
+                            <label for="rf-depth">Max Depth</label>
+                            <div class="range-value-container">
+                                <input type="range" id="rf-depth" name="rf_depth" min="2" max="15" step="1" value="6">
+                                <span class="range-val" id="rf-depth-val">6</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- XGBoost Params -->
+                    <div class="model-param-group">
+                        <h3>XGBoost / Gradient Boosting</h3>
+                        <div class="param-input">
+                            <label for="xgb-estimators">Number of Trees</label>
+                            <div class="range-value-container">
+                                <input type="range" id="xgb-estimators" name="xgb_estimators" min="10" max="200" step="10" value="80">
+                                <span class="range-val" id="xgb-estimators-val">80</span>
+                            </div>
+                        </div>
+                        <div class="param-input">
+                            <label for="xgb-lr">Learning Rate</label>
+                            <div class="range-value-container">
+                                <input type="range" id="xgb-lr" name="xgb_lr" min="0.01" max="0.5" step="0.01" value="0.1">
+                                <span class="range-val" id="xgb-lr-val">0.1</span>
+                            </div>
+                        </div>
+                        <div class="param-input">
+                            <label for="xgb-depth">Max Depth</label>
+                            <div class="range-value-container">
+                                <input type="range" id="xgb-depth" name="xgb_depth" min="2" max="8" step="1" value="4">
+                                <span class="range-val" id="xgb-depth-val">4</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" id="btn-train">
+                        <i class="fa-solid fa-arrows-rotate spinner-icon hidden" id="train-spinner"></i>
+                        <span id="train-btn-text">Optimize & Train Models</span>
+                    </button>
+                </form>
+            </aside>
+
+            <!-- Main Dashboard Area -->
+            <main class="dashboard-content">
+                
+                <!-- Navigation Tabs -->
+                <nav class="dashboard-tabs">
+                    <button class="tab-btn active" data-tab="overview-tab">
+                        <i class="fa-solid fa-chart-line"></i> Performance Dashboard
+                    </button>
+                    <button class="tab-btn" data-tab="data-tab">
+                        <i class="fa-solid fa-table"></i> Data Preview
+                    </button>
+                    <button class="tab-btn" data-tab="predict-tab">
+                        <i class="fa-solid fa-hospital-user"></i> Patient Predictor
+                    </button>
+                </nav>
+
+                <!-- Tab 1: Performance Dashboard -->
+                <div class="tab-content active" id="overview-tab">
+                    
+                    <!-- Quick Metrics Row -->
+                    <div class="metrics-grid">
+                        <div class="metric-card" id="best-model-card">
+                            <div class="metric-icon"><i class="fa-solid fa-medal"></i></div>
+                            <div class="metric-info">
+                                <h3>Top Model</h3>
+                                <p class="metric-value" id="top-model-name">-</p>
+                                <span class="metric-sub" id="top-model-score">AUC: -</span>
+                            </div>
+                        </div>
+                        <div class="metric-card" id="avg-accuracy-card">
+                            <div class="metric-icon"><i class="fa-solid fa-bullseye"></i></div>
+                            <div class="metric-info">
+                                <h3>Classifier Accuracy</h3>
+                                <p class="metric-value" id="avg-accuracy-value">-</p>
+                                <span class="metric-sub" id="accuracy-model-name">-</span>
+                            </div>
+                        </div>
+                        <div class="metric-card" id="avg-f1-card">
+                            <div class="metric-icon"><i class="fa-solid fa-microscope"></i></div>
+                            <div class="metric-info">
+                                <h3>F1-Score</h3>
+                                <p class="metric-value" id="avg-f1-value">-</p>
+                                <span class="metric-sub" id="f1-model-name">-</span>
+                            </div>
+                        </div>
+                        <div class="metric-card" id="avg-auc-card">
+                            <div class="metric-icon"><i class="fa-solid fa-chart-area"></i></div>
+                            <div class="metric-info">
+                                <h3>ROC AUC Score</h3>
+                                <p class="metric-value" id="avg-auc-value">-</p>
+                                <span class="metric-sub" id="auc-model-name">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Dashboard Charting and Comparisons -->
+                    <div class="dashboard-grid">
+                        <!-- ROC Chart Card -->
+                        <div class="chart-card">
+                            <div class="card-header">
+                                <h3>ROC Curves (Sensitivity vs. Specificity)</h3>
+                                <span class="badge badge-info">Comparison</span>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="roc-chart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Performance Table Card -->
+                        <div class="chart-card">
+                            <div class="card-header">
+                                <h3>Model Performance Matrix</h3>
+                                <span class="badge badge-success">Live Evaluation</span>
+                            </div>
+                            <div class="table-container">
+                                <table class="metrics-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Algorithm</th>
+                                            <th>Accuracy</th>
+                                            <th>Precision</th>
+                                            <th>Recall</th>
+                                            <th>F1 Score</th>
+                                            <th>ROC AUC</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="metrics-table-body">
+                                        <!-- Populated via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Feature Importance Card -->
+                        <div class="chart-card">
+                            <div class="card-header">
+                                <h3>Feature Impact / Weighting Analysis</h3>
+                                <div class="model-select-inline">
+                                    <label for="importance-model-select">Model:</label>
+                                    <select id="importance-model-select">
+                                        <option value="random_forest" selected>Random Forest</option>
+                                        <option value="xgboost">XGBoost</option>
+                                        <option value="logistic_regression">Logistic Regression</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="importance-chart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Confusion Matrix Card -->
+                        <div class="chart-card">
+                            <div class="card-header">
+                                <h3>Confusion Matrix</h3>
+                                <div class="model-select-inline">
+                                    <label for="cm-model-select">Model:</label>
+                                    <select id="cm-model-select">
+                                        <option value="random_forest" selected>Random Forest</option>
+                                        <option value="xgboost">XGBoost</option>
+                                        <option value="logistic_regression">Logistic Regression</option>
+                                        <option value="svm">Support Vector Machine</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="confusion-matrix-container">
+                                <div class="matrix-grid">
+                                    <div class="matrix-cell label-cell"></div>
+                                    <div class="matrix-cell header-cell">Predicted Negative</div>
+                                    <div class="matrix-cell header-cell">Predicted Positive</div>
+                                    
+                                    <div class="matrix-cell header-cell y-label">Actual Negative</div>
+                                    <div class="matrix-cell value-cell tn-cell" id="cm-tn">
+                                        <span class="cm-val">-</span>
+                                        <span class="cm-label">True Negative</span>
+                                    </div>
+                                    <div class="matrix-cell value-cell fp-cell" id="cm-fp">
+                                        <span class="cm-val">-</span>
+                                        <span class="cm-label">False Positive</span>
+                                    </div>
+                                    
+                                    <div class="matrix-cell header-cell y-label">Actual Positive</div>
+                                    <div class="matrix-cell value-cell fn-cell" id="cm-fn">
+                                        <span class="cm-val">-</span>
+                                        <span class="cm-label">False Negative</span>
+                                    </div>
+                                    <div class="matrix-cell value-cell tp-cell" id="cm-tp">
+                                        <span class="cm-val">-</span>
+                                        <span class="cm-label">True Positive</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Dataset Preview -->
+                <div class="tab-content" id="data-tab">
+                    <div class="metrics-grid" id="data-summary-cards">
+                        <!-- Summary statistics cards updated dynamically via JavaScript -->
+                    </div>
+
+                    <div class="preview-table-card">
+                        <div class="card-header">
+                            <h3>Structured Patient Cohort (First 50 Samples)</h3>
+                            <span class="badge badge-info">Interactive Preview</span>
+                        </div>
+                        <div class="data-table-wrapper">
+                            <table class="data-table" id="dataset-preview-table">
+                                <thead id="dataset-preview-thead">
+                                    <!-- Dynamic header columns -->
+                                </thead>
+                                <tbody id="dataset-preview-tbody">
+                                    <!-- Dynamic table body -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Real-Time Predictor -->
+                <div class="tab-content" id="predict-tab">
+                    <div class="predictor-layout">
+                        
+                        <!-- Prediction Input Card -->
+                        <div class="predictor-card input-card">
+                            <div class="card-header">
+                                <h3>Patient Clinical Profile</h3>
+                                <p>Provide diagnostic inputs for model assessment</p>
+                            </div>
+                            
+                            <form id="predictor-form">
+                                <!-- Dynamic Form Fields Container -->
+                                <div class="predictor-form-grid" id="dynamic-form-fields">
+                                    <!-- Swapped dynamically by JS based on dataset selected -->
+                                </div>
+
+                                <div class="predictor-control-bar">
+                                    <div class="model-select-wrapper">
+                                        <label for="pred-model">Decision Engine:</label>
+                                        <select id="pred-model" name="model_name">
+                                            <option value="random_forest" selected>Random Forest (Ensemble)</option>
+                                            <option value="xgboost">XGBoost (Gradient Boost)</option>
+                                            <option value="logistic_regression">Logistic Regression (Linear)</option>
+                                            <option value="svm">Support Vector Machine (Kernel)</option>
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="btn btn-success" id="btn-predict">
+                                        <i class="fa-solid fa-heart-pulse"></i> Evaluate Patient Risk
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Prediction Outcome Panel -->
+                        <div class="predictor-card result-card empty" id="prediction-result-panel">
+                            
+                            <!-- Placeholder -->
+                            <div class="result-placeholder">
+                                <i class="fa-solid fa-id-card-clip"></i>
+                                <h3>Risk Decision Engine Ready</h3>
+                                <p>Fill in the patient's biological and clinical indicators and click "Evaluate Patient Risk" to run the classification model.</p>
+                            </div>
+
+                            <!-- Results display (hidden initially) -->
+                            <div class="result-display hidden" id="result-display-content">
+                                <div class="result-header-panel">
+                                    <h3>Clinical Risk Outcome</h3>
+                                    <div class="decision-badge" id="decision-badge">Normal / Negative</div>
+                                </div>
+                                
+                                <div class="score-radial-container">
+                                    <div class="score-circular-progress" id="score-progress">
+                                        <div class="score-value" id="score-percentage">15%</div>
+                                        <div class="score-label">Disease Prob.</div>
+                                    </div>
+                                    <div class="score-meta">
+                                        <p>Model Class Confidence: <strong id="score-probability-text">85.4%</strong></p>
+                                        <p>Target Prediction: <strong id="score-class-text">Negative (0)</strong></p>
+                                    </div>
+                                </div>
+
+                                <div class="derived-ratios-panel" id="derived-ratios-container">
+                                    <!-- Dynamic ratios depending on dataset -->
+                                </div>
+
+                                <div class="risk-explanation-panel">
+                                    <h4>Key Risk Factors Explanations</h4>
+                                    <ul class="risk-factors-list" id="risk-factors-list">
+                                        <!-- Populated via JS -->
+                                    </ul>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+
+        <footer class="app-footer-bar">
+            <p>&copy; 2026 AuraMed AI. Built with Flask, Scikit-Learn, XGBoost, and Chart.js. Antigravity Coding Suite.</p>
+        </footer>
+    </div>
+    
+    <!-- App Logic Script -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
